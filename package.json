@@ -10,7 +10,8 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx --test tests/**/*.test.ts"
+    "test": "tsx --test tests/**/*.test.ts",
+    "test:manual": "tsx tests/submission/snow-ice.manual-test.ts"
   },
   "keywords": [
     "nyc",

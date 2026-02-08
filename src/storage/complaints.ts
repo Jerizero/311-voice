@@ -97,7 +97,7 @@ export function listComplaints(filters?: {
     params.push(filters.status);
   }
 
-  query += ' ORDER BY created_at DESC';
+  query += ' ORDER BY created_at DESC, id DESC';
 
   if (filters?.limit) {
     query += ' LIMIT ?';
