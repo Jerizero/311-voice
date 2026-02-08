@@ -13,20 +13,43 @@ import {
 } from './prompts.js';
 import { createComplaint, updateComplaint, listComplaints } from '../storage/complaints.js';
 import { getSubmitter, closeSubmitter } from '../submission/playwright.js';
+import { logger } from '../utils/logger.js';
 
 const MODEL_NAME = 'gemini-3-pro-preview';
 
+export type GenerateFn = (prompt: string) => Promise<string>;
+
+/** Parse a JSON response from the LLM, stripping markdown fences and validating. */
+export function parseJsonResponse<T>(text: string): T | null {
+  try {
+    const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleaned) as T;
+  } catch {
+    logger.debug('  → Failed to parse LLM response as JSON. Raw text:', text.substring(0, 200));
+    return null;
+  }
+}
+
 export class ConversationManager {
-  private genAI: GoogleGenerativeAI;
+  private generateFn: GenerateFn;
   private state: ConversationState;
   private useBrowser: boolean;
 
-  constructor(apiKey?: string, useBrowser = true) {
-    const key = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!key) {
-      throw new Error('GEMINI_API_KEY or GOOGLE_API_KEY environment variable required');
+  constructor(apiKey?: string, useBrowser = true, generateFn?: GenerateFn) {
+    if (generateFn) {
+      this.generateFn = generateFn;
+    } else {
+      const key = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      if (!key) {
+        throw new Error('GEMINI_API_KEY or GOOGLE_API_KEY environment variable required');
+      }
+      const genAI = new GoogleGenerativeAI(key);
+      this.generateFn = async (prompt: string) => {
+        const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+      };
     }
-    this.genAI = new GoogleGenerativeAI(key);
     this.useBrowser = useBrowser;
     this.state = {
       currentComplaint: null,
@@ -37,25 +60,20 @@ export class ConversationManager {
   }
 
   private async generate(prompt: string): Promise<string> {
-    const model = this.genAI.getGenerativeModel({ model: MODEL_NAME });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    return this.generateFn(prompt);
   }
 
   async processMessage(userMessage: string): Promise<string> {
     this.state.messages.push({ role: 'user', content: userMessage });
 
-    // Handle confirmation flow
     if (this.state.awaitingConfirmation) {
       return this.handleConfirmationResponse(userMessage);
     }
 
-    // If no active complaint, classify the message
     if (!this.state.currentComplaint?.type) {
       return this.classifyAndStart(userMessage);
     }
 
-    // We have an active complaint - extract info and continue
     return this.continueGathering(userMessage);
   }
 
@@ -63,7 +81,7 @@ export class ConversationManager {
     const prompt = buildClassificationPrompt(userMessage, this.state.messages);
     const responseText = await this.generate(prompt);
 
-    let parsed: {
+    const parsed = parseJsonResponse<{
       complaintType?: ComplaintType | null;
       confidence?: number;
       extractedFields?: Record<string, string>;
@@ -71,17 +89,12 @@ export class ConversationManager {
       clarificationQuestion?: string;
       intent?: 'history' | 'cancel';
       query?: string;
-    };
+    }>(responseText);
 
-    try {
-      // Clean up response - Gemini sometimes wraps in markdown code blocks
-      const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
-      parsed = JSON.parse(cleanJson);
-    } catch {
+    if (!parsed) {
       return "I couldn't understand that. Could you describe what you'd like to report?";
     }
 
-    // Handle special intents
     if (parsed.intent === 'history') {
       return this.handleHistoryQuery(parsed.query || '');
     }
@@ -91,30 +104,25 @@ export class ConversationManager {
       return 'Okay, cancelled. What would you like to do?';
     }
 
-    // Need clarification
     if (parsed.needsClarification && parsed.clarificationQuestion) {
       const clarification = parsed.clarificationQuestion;
       this.state.messages.push({ role: 'assistant', content: clarification });
       return clarification;
     }
 
-    // Got a complaint type
     if (parsed.complaintType && parsed.confidence && parsed.confidence > 0.5) {
       this.state.currentComplaint = { type: parsed.complaintType };
       this.state.gatheredFields = parsed.extractedFields || {};
 
-      // Check if we have all required fields already
       if (this.hasAllRequiredFields()) {
         return this.showConfirmation();
       }
 
-      // Ask for missing info
       const followUp = await this.generateFollowUp();
       this.state.messages.push({ role: 'assistant', content: followUp });
       return followUp;
     }
 
-    // Couldn't classify
     const types = getAllTemplates().map(t => `• ${t.displayName}`).join('\n');
     const helpMessage = `I can help you file these types of complaints:\n${types}\n\nWhat would you like to report?`;
     this.state.messages.push({ role: 'assistant', content: helpMessage });
@@ -124,31 +132,24 @@ export class ConversationManager {
   private async continueGathering(userMessage: string): Promise<string> {
     const template = getTemplate(this.state.currentComplaint!.type as ComplaintType);
 
-    // Check for cancel/abandon
     const lower = userMessage.toLowerCase();
     if (lower === 'cancel' || lower === 'nevermind' || lower === 'never mind') {
       this.reset();
       return 'Okay, cancelled. What would you like to do?';
     }
 
-    // Extract new information
     const extractPrompt = buildExtractionPrompt(template, userMessage, this.state.gatheredFields);
     const responseText = await this.generate(extractPrompt);
 
-    try {
-      const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
-      const extracted = JSON.parse(cleanJson);
+    const extracted = parseJsonResponse<Record<string, string>>(responseText);
+    if (extracted) {
       Object.assign(this.state.gatheredFields, extracted);
-    } catch {
-      // Couldn't parse, continue with what we have
     }
 
-    // Check if we have everything
     if (this.hasAllRequiredFields()) {
       return this.showConfirmation();
     }
 
-    // Ask for more
     const followUp = await this.generateFollowUp();
     this.state.messages.push({ role: 'assistant', content: followUp });
     return followUp;
@@ -197,7 +198,6 @@ export class ConversationManager {
       return 'Okay, cancelled. What would you like to do?';
     }
 
-    // Try to extract edits from the message
     this.state.awaitingConfirmation = false;
     return this.continueGathering(userMessage);
   }
@@ -206,17 +206,15 @@ export class ConversationManager {
     const type = this.state.currentComplaint!.type as ComplaintType;
     const template = getTemplate(type);
 
-    // Save to database
     const complaint = createComplaint(type, this.state.gatheredFields);
 
     let successMessage: string;
 
     if (this.useBrowser) {
-      // Submit via Playwright
-      console.log('\n🌐 Opening browser to submit to NYC 311...\n');
+      console.log('\n  Opening browser to submit to NYC 311...\n');
 
       try {
-        const submitter = await getSubmitter(false); // visible browser
+        const submitter = await getSubmitter(false);
         const result = await submitter.submit(type, this.state.gatheredFields);
 
         if (result.success) {
@@ -226,40 +224,37 @@ export class ConversationManager {
             submittedAt: new Date(),
           });
 
-          successMessage = `\n✅ ${template.displayName} complaint submitted to NYC 311!\n\nLocal ID: ${complaint.id}`;
+          successMessage = `\n${template.displayName} complaint submitted to NYC 311!\n\nLocal ID: ${complaint.id}`;
           if (result.confirmationNumber) {
             successMessage += `\n311 Reference: ${result.confirmationNumber}`;
           }
           successMessage += '\n\nWhat else can I help you with?';
         } else {
-          // Browser submission failed - save locally
           updateComplaint(complaint.id!, {
             status: 'submitted',
             submittedAt: new Date(),
           });
 
-          successMessage = `\n⚠️ Browser submission encountered an issue: ${result.error}\n\nComplaint saved locally (ID: ${complaint.id})\nYou can manually submit at: https://portal.311.nyc.gov\n\nWhat else can I help you with?`;
+          successMessage = `\nBrowser submission encountered an issue: ${result.error}\n\nComplaint saved locally (ID: ${complaint.id})\nYou can manually submit at: https://portal.311.nyc.gov\n\nWhat else can I help you with?`;
         }
 
         await closeSubmitter();
       } catch (error) {
-        // Fallback to local save
         updateComplaint(complaint.id!, {
           status: 'submitted',
           submittedAt: new Date(),
         });
 
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        successMessage = `\n⚠️ Could not open browser: ${errorMsg}\n\nComplaint saved locally (ID: ${complaint.id})\n\nWhat else can I help you with?`;
+        successMessage = `\nCould not open browser: ${errorMsg}\n\nComplaint saved locally (ID: ${complaint.id})\n\nWhat else can I help you with?`;
       }
     } else {
-      // Local save only
       updateComplaint(complaint.id!, {
         status: 'submitted',
         submittedAt: new Date(),
       });
 
-      successMessage = `\n✅ ${template.displayName} complaint saved locally!\n\nComplaint ID: ${complaint.id}\n(Browser submission disabled)\n\nWhat else can I help you with?`;
+      successMessage = `\n${template.displayName} complaint saved locally!\n\nComplaint ID: ${complaint.id}\n(Browser submission disabled)\n\nWhat else can I help you with?`;
     }
 
     this.reset();
@@ -277,7 +272,7 @@ export class ConversationManager {
     const lines = ['Your recent complaints:\n'];
     for (const c of complaints) {
       const template = getTemplate(c.type);
-      const status = c.status === 'submitted' ? '✅' : '📝';
+      const status = c.status === 'submitted' ? 'Submitted' : 'Draft';
       const date = c.createdAt.toLocaleDateString();
       lines.push(`${status} #${c.id} - ${template.displayName} (${date})`);
       if (c.confirmationNumber) {
