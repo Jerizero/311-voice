@@ -1,4 +1,4 @@
-import db from './db.js';
+import { getDb } from './db.js';
 import type { ComplaintData, ComplaintType, ComplaintStatus } from '../complaints/types.js';
 
 interface DbComplaint {
@@ -27,7 +27,7 @@ export function createComplaint(
   type: ComplaintType,
   fields: Record<string, string | boolean | null>
 ): ComplaintData {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     INSERT INTO complaints (type, status, fields)
     VALUES (?, 'draft', ?)
   `);
@@ -37,7 +37,7 @@ export function createComplaint(
 }
 
 export function getComplaint(id: number): ComplaintData | null {
-  const stmt = db.prepare('SELECT * FROM complaints WHERE id = ?');
+  const stmt = getDb().prepare('SELECT * FROM complaints WHERE id = ?');
   const row = stmt.get(id) as DbComplaint | undefined;
   return row ? toComplaintData(row) : null;
 }
@@ -74,7 +74,7 @@ export function updateComplaint(
   if (sets.length === 0) return getComplaint(id);
 
   values.push(String(id));
-  const stmt = db.prepare(`UPDATE complaints SET ${sets.join(', ')} WHERE id = ?`);
+  const stmt = getDb().prepare(`UPDATE complaints SET ${sets.join(', ')} WHERE id = ?`);
   stmt.run(...values);
 
   return getComplaint(id);
@@ -104,13 +104,13 @@ export function listComplaints(filters?: {
     params.push(filters.limit);
   }
 
-  const stmt = db.prepare(query);
+  const stmt = getDb().prepare(query);
   const rows = stmt.all(...params) as DbComplaint[];
   return rows.map(toComplaintData);
 }
 
 export function deleteComplaint(id: number): boolean {
-  const stmt = db.prepare('DELETE FROM complaints WHERE id = ?');
+  const stmt = getDb().prepare('DELETE FROM complaints WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
 }
