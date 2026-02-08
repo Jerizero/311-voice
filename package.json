@@ -1,0 +1,35 @@
+{
+  "name": "311-voice",
+  "version": "1.0.0",
+  "description": "Natural language interface for NYC 311 complaints",
+  "main": "dist/index.js",
+  "bin": {
+    "311": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "tsx --test tests/**/*.test.ts"
+  },
+  "keywords": [
+    "nyc",
+    "311",
+    "cli"
+  ],
+  "author": "Jeriel Acosta",
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.0.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "better-sqlite3": "^12.6.2",
+    "commander": "^14.0.2",
+    "playwright": "^1.58.0"
+  }
+}
