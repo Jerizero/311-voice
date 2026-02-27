@@ -15,7 +15,7 @@ import { createComplaint, updateComplaint, listComplaints } from '../storage/com
 import { getSubmitter, closeSubmitter } from '../submission/playwright.js';
 import { logger } from '../utils/logger.js';
 
-const MODEL_NAME = 'gemini-3-pro-preview';
+const MODEL_NAME = 'gemini-3.1-pro-preview';
 
 export type GenerateFn = (prompt: string) => Promise<string>;
 
