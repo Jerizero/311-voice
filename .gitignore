@@ -5,3 +5,6 @@ dist/
 *.db-journal
 .DS_Store
 *.png
+
+claude-progress.json
+.claude/
