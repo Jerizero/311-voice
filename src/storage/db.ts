@@ -29,9 +29,29 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_complaints_status ON complaints(status);
 `;
 
+/** Columns added after the original schema; applied idempotently on open. */
+const MIGRATION_COLUMNS: Record<string, string> = {
+  latitude: 'REAL',
+  longitude: 'REAL',
+  borough: 'TEXT',
+  nyc_unique_key: 'TEXT',
+  nyc_status: 'TEXT',
+  nyc_checked_at: 'TEXT',
+};
+
 function runSchema(database: DatabaseType): void {
   for (const statement of SCHEMA.split(';').filter(s => s.trim())) {
     database.prepare(statement).run();
+  }
+
+  // Add tracking columns to pre-existing databases that predate them.
+  const existing = new Set(
+    (database.prepare('PRAGMA table_info(complaints)').all() as { name: string }[]).map(c => c.name)
+  );
+  for (const [col, type] of Object.entries(MIGRATION_COLUMNS)) {
+    if (!existing.has(col)) {
+      database.prepare(`ALTER TABLE complaints ADD COLUMN ${col} ${type}`).run();
+    }
   }
 }
 

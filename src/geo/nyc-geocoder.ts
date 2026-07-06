@@ -597,6 +597,12 @@ export async function geocodeNYCLocation(input: string): Promise<GeocoderResult>
     }
   }
 
+  // Offline seam for tests: skip network, fall through to pattern matching.
+  if (process.env.GEO_OFFLINE === '1') {
+    const geoSearchResult: GeocoderResult = { success: false, error: 'offline' };
+    return fallbackGeocode(input, crossStreets, locationType, geoSearchResult);
+  }
+
   // 2. Try NYC GeoSearch API
   console.log('[Geocoder] Querying NYC GeoSearch API...');
   const geoSearchResult = await queryNYCGeoSearch(input);
@@ -631,6 +637,16 @@ export async function geocodeNYCLocation(input: string): Promise<GeocoderResult>
   }
 
   // 4. Fall back to pattern-based formatting (no coordinates)
+  return fallbackGeocode(input, crossStreets, locationType, geoSearchResult);
+}
+
+/** Pattern-based geocoding with no network calls (used offline and as final fallback). */
+function fallbackGeocode(
+  input: string,
+  crossStreets: { street1: string; street2: string } | null,
+  locationType: NYCLocation['locationType'],
+  geoSearchResult: GeocoderResult
+): GeocoderResult {
   console.log('[Geocoder] Falling back to pattern matching...');
 
   if (crossStreets) {

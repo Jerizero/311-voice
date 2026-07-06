@@ -25,16 +25,30 @@ const WELCOME = `
 ║        NYC 311 Complaints via Natural Language           ║
 ╚══════════════════════════════════════════════════════════╝
 
-I can help you file these types of complaints:
-• Illegal Parking
-• No Heat or Hot Water
-• Traffic Signal Issues
-• Snow/Ice on Sidewalk
-• Missed Garbage Collection
-• Blocked Sidewalk
+Describe your issue in plain English. I'll gather the details, geocode the
+location, open the right NYC 311 form in your browser, and hand you the final
+click. Paste back the SR number and I'll track its status for you.
 
-Just describe your issue in plain English.
-Type "history" to see past complaints, "quit" to exit.
+Types: illegal parking · no heat/hot water · traffic signal · snow or ice ·
+missed collection · blocked sidewalk
+
+Commands: "history" · "track" · "help" · "quit"
+`;
+
+const HELP = `
+How this works:
+1. Tell me what's wrong and where (e.g. "snow on the sidewalk at 123 Main St").
+2. I confirm the details, then open the NYC 311 form in your browser with a
+   copy-paste description and the exact spot to pin.
+3. You do the final map-pin + Submit (NYC has no submission API, so this step
+   is yours), then paste the SR number back to me.
+4. Run "track" a day or two later to check the live status via NYC Open Data.
+
+Commands:
+  history   list your complaints and their status
+  track     check filed complaints against NYC Open Data
+  help      show this
+  quit      exit
 `;
 
 async function main() {
@@ -67,10 +81,41 @@ async function main() {
         return;
       }
 
-      if (trimmed.toLowerCase() === 'quit' || trimmed.toLowerCase() === 'exit') {
+      const cmd = trimmed.toLowerCase();
+
+      if (cmd === 'quit' || cmd === 'exit') {
         console.log('\nGoodbye!\n');
         rl.close();
         process.exit(0);
+      }
+
+      // Direct commands bypass the LLM for speed and reliability. They only fire
+      // when not mid-complaint, so words like "help" can't hijack a description.
+      const midComplaint =
+        manager.getState().currentComplaint !== null ||
+        manager.getState().awaitingConfirmation ||
+        manager.getState().awaitingSubmissionNumber;
+
+      if (!midComplaint && (cmd === 'help' || cmd === '?')) {
+        console.log(HELP);
+        prompt();
+        return;
+      }
+
+      if (!midComplaint && cmd === 'track') {
+        try {
+          console.log('\n' + (await manager.trackComplaints()));
+        } catch (error) {
+          console.error('\n❌ Error:', error instanceof Error ? error.message : 'unknown');
+        }
+        prompt();
+        return;
+      }
+
+      if (!midComplaint && cmd === 'history') {
+        console.log('\n' + manager.showHistory());
+        prompt();
+        return;
       }
 
       try {

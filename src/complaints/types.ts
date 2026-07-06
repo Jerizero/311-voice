@@ -30,9 +30,19 @@ export interface ComplaintData {
   type: ComplaintType;
   status: ComplaintStatus;
   fields: Record<string, string | boolean | null>;
+  /** Portal SR reference the user pasted back (311-XXXXXXXX). */
   confirmationNumber: string | null;
   createdAt: Date;
   submittedAt: Date | null;
+  // Location + NYC Open Data tracking (all optional; populated as available).
+  latitude?: number | null;
+  longitude?: number | null;
+  borough?: string | null;
+  /** Matched NYC Open Data unique_key (distinct from the portal SR number). */
+  nycUniqueKey?: string | null;
+  /** Last-known status from NYC Open Data. */
+  nycStatus?: string | null;
+  nycCheckedAt?: Date | null;
 }
 
 export interface ConversationMessage {
@@ -45,4 +55,8 @@ export interface ConversationState {
   gatheredFields: Record<string, string | boolean | null>;
   messages: ConversationMessage[];
   awaitingConfirmation: boolean;
+  /** After handoff, we're waiting for the user to paste an SR number or skip. */
+  awaitingSubmissionNumber: boolean;
+  /** The saved complaint id awaiting an SR number. */
+  pendingComplaintId: number | null;
 }

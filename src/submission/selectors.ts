@@ -82,4 +82,5 @@ export const PORTAL_URLS: Record<string, string> = {
   'heat-hot-water': 'https://portal.311.nyc.gov/article/?kanumber=KA-01790',
   'traffic-signal': 'https://portal.311.nyc.gov/article/?kanumber=KA-01791',
   'missed-collection': 'https://portal.311.nyc.gov/article/?kanumber=KA-02060',
+  'blocked-sidewalk': 'https://portal.311.nyc.gov/article/?kanumber=KA-01980',
 };
