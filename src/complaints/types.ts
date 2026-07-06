@@ -3,7 +3,8 @@ export type ComplaintType =
   | 'heat-hot-water'
   | 'traffic-signal'
   | 'snow-ice'
-  | 'missed-collection';
+  | 'missed-collection'
+  | 'blocked-sidewalk';
 
 export type ComplaintStatus = 'draft' | 'submitted' | 'confirmed';
 

@@ -6,8 +6,8 @@ import type { ComplaintType } from '../../src/complaints/types.js';
 describe('complaint templates', () => {
   const allTemplates = getAllTemplates();
 
-  it('has exactly 5 templates', () => {
-    assert.equal(allTemplates.length, 5);
+  it('has exactly 6 templates', () => {
+    assert.equal(allTemplates.length, 6);
   });
 
   it('all templates have required structure', () => {
@@ -61,7 +61,7 @@ describe('complaint templates', () => {
   });
 
   it('getTemplate returns correct template for each type', () => {
-    const types: ComplaintType[] = ['illegal-parking', 'heat-hot-water', 'traffic-signal', 'snow-ice', 'missed-collection'];
+    const types: ComplaintType[] = ['illegal-parking', 'heat-hot-water', 'traffic-signal', 'snow-ice', 'missed-collection', 'blocked-sidewalk'];
     for (const type of types) {
       const t = getTemplate(type);
       assert.equal(t.type, type);

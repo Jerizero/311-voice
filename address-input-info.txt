@@ -1,0 +1,56 @@
+→ Navigating...
+
+→ On Step 2 (Where)...
+
+Found 5 visible input elements:
+
+Input 0: id="search-terms" name="search-terms" type="text"
+Input 1: id="null" name="null" type="submit"
+Input 2: id="null" name="null" type="null"
+Input 3: id="null" name="null" type="button"
+Input 4: id="NextButton" name="null" type="button"
+
+
+Labels containing "Address":
+  Label: "Is the address within NYC? NYC Address" for="n311_portaladdresstype_0" id="null"
+  Label: "Is the address within NYC? Non-NYC Address" for="n311_portaladdresstype_1" id="null"
+  Label: "Address" for="null" id="n311_addressid_label"
+  Label: "Address" for="n311_address" id="n311_address_label"
+  Label: "Address Type" for="n311_addresstype" id="n311_addresstype_label"
+  Label: "Is address in NYC? NYC Address" for="n311_isaddressinnyc_0" id="null"
+  Label: "Is address in NYC? Non-NYC Address" for="n311_isaddressinnyc_1" id="null"
+  Label: "Is Destination in NYC? NYC Address" for="n311_isdestinationinnyc_0" id="null"
+  Label: "Is Destination in NYC? Non-NYC Address" for="n311_isdestinationinnyc_1" id="null"
+  Label: "Is Owner Address in NYC ?" for="n311_isowneraddressinnyc" id="n311_isowneraddressinnyc_label"
+  Label: "Owner Address" for="n311_owneraddresstext" id="n311_owneraddresstext_label"
+  Label: "Owner Address" for="null" id="n311_owneraddress_label"
+  Label: "Is the Business or Organization Address the same as the address above?" for="null" id="n311_srcoveringarea_label"
+  Label: "Is the Business or Organization Address the same as the address above? Yes" for="n311_srcoveringarea_0" id="null"
+  Label: "Is the Business or Organization Address the same as the address above? No" for="n311_srcoveringarea_1" id="null"
+  Label: "Is the Business or Organization Address the same as the address above? I don't know" for="n311_srcoveringarea_2" id="null"
+  Label: "Is the Business or Organization in NYC? NYC Address" for="n311_schedulerrole_0" id="null"
+  Label: "Is the Business or Organization in NYC? Non NYC Address" for="n311_schedulerrole_1" id="null"
+  Label: "Business or Organization Address" for="null" id="n311_businessaddress_label"
+  Label: "Street Address" for="n311_streetname" id="n311_streetname_label"
+  Label: "Use Customer Address" for="n311_usecustomeraddress" id="n311_usecustomeraddress_label"
+  Label: "Portal - Customer Address - Line 1" for="n311_portalcustomeraddressline1" id="n311_portalcustomeraddressline1_label"
+  Label: "Portal - Customer Address - Line 2" for="n311_portalcustomeraddressline2" id="n311_portalcustomeraddressline2_label"
+  Label: "Portal - Customer Address - State" for="n311_portalcustomeraddressstate" id="n311_portalcustomeraddressstate_label"
+  Label: "Portal - Customer Address - City" for="n311_portalcustomeraddresscity" id="n311_portalcustomeraddresscity_label"
+  Label: "Portal - Customer Address - Borough" for="n311_portalcustomeraddressborough" id="n311_portalcustomeraddressborough_label"
+  Label: "Portal - Customer Address - ZIP" for="n311_portalcustomeraddresszip" id="n311_portalcustomeraddresszip_label"
+  Label: "Address Generator" for="null" id="n311_addressgenerator_label"
+
+
+Trying to find input near Address label:
+  Found fieldset with aria-label="Address"
+    Inner input: id="n311_portaladdresstype_0" type="radio" readonly="null"
+    Inner input: id="n311_portaladdresstype_1" type="radio" readonly="null"
+    Inner input: id="user-address-checkbox-n311_addressid" type="checkbox" readonly="null"
+    Inner input: id="n311_addressid_name" type="text" readonly=""
+    Inner input: id="n311_addressid" type="hidden" readonly="null"
+    Inner input: id="n311_addressid_entityname" type="hidden" readonly="null"
+    Inner input: id="null" type="null" readonly="null"
+    Inner input: id="null" type="null" readonly="null"
+    Inner input: id="n311_address" type="text" readonly="null"
+    Inner input: id="n311_describeotherlocation" type="text" readonly="null"

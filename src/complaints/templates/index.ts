@@ -4,6 +4,7 @@ import { heatHotWaterTemplate } from './heat-hot-water.js';
 import { trafficSignalTemplate } from './traffic-signal.js';
 import { snowIceTemplate } from './snow-ice.js';
 import { missedCollectionTemplate } from './missed-collection.js';
+import { blockedSidewalkTemplate } from './blocked-sidewalk.js';
 
 export const templates: Record<ComplaintType, ComplaintTemplate> = {
   'illegal-parking': illegalParkingTemplate,
@@ -11,6 +12,7 @@ export const templates: Record<ComplaintType, ComplaintTemplate> = {
   'traffic-signal': trafficSignalTemplate,
   'snow-ice': snowIceTemplate,
   'missed-collection': missedCollectionTemplate,
+  'blocked-sidewalk': blockedSidewalkTemplate,
 };
 
 export function getTemplate(type: ComplaintType): ComplaintTemplate {

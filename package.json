@@ -21,6 +21,9 @@
   "author": "Jeriel Acosta",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=18 <25"
+  },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.0.10",

@@ -31,6 +31,7 @@ I can help you file these types of complaints:
 • Traffic Signal Issues
 • Snow/Ice on Sidewalk
 • Missed Garbage Collection
+• Blocked Sidewalk
 
 Just describe your issue in plain English.
 Type "history" to see past complaints, "quit" to exit.

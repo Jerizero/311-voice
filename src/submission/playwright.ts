@@ -57,6 +57,7 @@ export class PlaywrightSubmitter {
         case 'heat-hot-water':
         case 'traffic-signal':
         case 'missed-collection':
+        case 'blocked-sidewalk':
           return notImplemented(type);
         default:
           return { success: false, error: `Unknown complaint type: ${type}` };
