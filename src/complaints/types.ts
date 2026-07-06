@@ -4,7 +4,11 @@ export type ComplaintType =
   | 'traffic-signal'
   | 'snow-ice'
   | 'missed-collection'
-  | 'blocked-sidewalk';
+  | 'blocked-sidewalk'
+  | 'noise-residential'
+  | 'rodent'
+  | 'pothole'
+  | 'graffiti';
 
 export type ComplaintStatus = 'draft' | 'submitted' | 'confirmed';
 

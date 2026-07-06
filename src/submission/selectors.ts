@@ -83,4 +83,9 @@ export const PORTAL_URLS: Record<string, string> = {
   'traffic-signal': 'https://portal.311.nyc.gov/article/?kanumber=KA-01791',
   'missed-collection': 'https://portal.311.nyc.gov/article/?kanumber=KA-02060',
   'blocked-sidewalk': 'https://portal.311.nyc.gov/article/?kanumber=KA-01980',
+  // Newer types use the portal search (stable) rather than a hardcoded article id.
+  'noise-residential': 'https://portal.311.nyc.gov/search/?q=residential%20noise',
+  'rodent': 'https://portal.311.nyc.gov/search/?q=rodent',
+  'pothole': 'https://portal.311.nyc.gov/search/?q=pothole',
+  'graffiti': 'https://portal.311.nyc.gov/search/?q=graffiti',
 };

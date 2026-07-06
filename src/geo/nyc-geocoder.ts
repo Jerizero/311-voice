@@ -948,7 +948,10 @@ export async function queryNYCGeoSearch(query: string): Promise<GeocoderResult> 
       let locationType: NYCLocation['locationType'] = 'unknown';
       if (props.layer === 'address') locationType = 'street_address';
       else if (props.layer === 'intersection') locationType = 'intersection';
-      else if (props.layer === 'venue') locationType = 'landmark';
+      // NYC GeoSearch returns most normal building addresses under the 'venue'
+      // layer, so it is an addressable point, not a landmark. True landmarks are
+      // caught upstream by isNonTraditionalAddress + the NYC_LANDMARKS table.
+      else if (props.layer === 'venue') locationType = 'street_address';
       else if (props.layer === 'street') locationType = 'street_address';
 
       // Map borough name to our type

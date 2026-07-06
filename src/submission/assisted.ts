@@ -42,7 +42,8 @@ export interface HandoffPacket {
   fields: HandoffField[];
 }
 
-function getLocationValue(fields: Record<string, string | boolean | null>): string | null {
+/** Pull the incident-location string out of a complaint's fields, if present. */
+export function extractLocationValue(fields: Record<string, string | boolean | null>): string | null {
   for (const key of LOCATION_FIELD_KEYS) {
     const v = fields[key];
     if (typeof v === 'string' && v.trim()) return v.trim();
@@ -92,7 +93,7 @@ export async function prepareHandoff(
 ): Promise<HandoffPacket> {
   const template = getTemplate(type);
   const portalUrl = PORTAL_URLS[type] || DEFAULT_PORTAL;
-  const locationInput = getLocationValue(fields);
+  const locationInput = extractLocationValue(fields);
 
   let latitude: number | undefined;
   let longitude: number | undefined;

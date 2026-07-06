@@ -43,11 +43,45 @@ export interface FindCandidatesOptions {
   longitude?: number;
   /** Uppercase borough name as NYC stores it, e.g. 'MANHATTAN'. */
   borough?: string;
+  /** Cross streets for an intersection, matched against the dataset's street fields. */
+  crossStreets?: { street1: string; street2: string };
   /** Only consider requests created at or after this instant. */
   filedAfter: Date;
   /** Size of the created_date window, in days (default 3). */
   windowDays?: number;
   limit?: number;
+}
+
+const STREET_SUFFIXES = new Set([
+  'STREET', 'ST', 'AVENUE', 'AVE', 'ROAD', 'RD', 'BOULEVARD', 'BLVD', 'DRIVE', 'DR',
+  'PLACE', 'PL', 'LANE', 'LN', 'COURT', 'CT', 'PLAZA', 'SQUARE', 'PARKWAY', 'PKWY',
+  'TERRACE', 'WAY', 'CIRCLE', 'HIGHWAY', 'EXPRESSWAY', 'BRIDGE',
+]);
+const STREET_DIRECTIONALS = new Set(['N', 'S', 'E', 'W', 'NORTH', 'SOUTH', 'EAST', 'WEST']);
+
+/** The most identifying token of a street name (a number, else the longest word). */
+function distinctiveStreetToken(street: string): string | null {
+  const words = street
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((w) => !STREET_SUFFIXES.has(w) && !STREET_DIRECTIONALS.has(w));
+  if (words.length === 0) return null;
+  const numeric = words.find((w) => /\d/.test(w));
+  if (numeric) return numeric.replace(/(TH|ST|ND|RD)$/, ''); // 145TH -> 145
+  return words.sort((a, b) => b.length - a.length)[0];
+}
+
+/** A $where clause requiring both cross-street tokens to appear in any street field. */
+function crossStreetWhere(cs: { street1: string; street2: string }): string | null {
+  const t1 = distinctiveStreetToken(cs.street1);
+  const t2 = distinctiveStreetToken(cs.street2);
+  if (!t1 || !t2) return null;
+  const cols = ['intersection_street_1', 'intersection_street_2', 'cross_street_1', 'cross_street_2', 'street_name'];
+  // Tokens are alphanumeric only (stripped above), so they are safe to inline.
+  const clauseFor = (tok: string) => '(' + cols.map((c) => `upper(${c}) like '%${tok}%'`).join(' or ') + ')';
+  return `${clauseFor(t1)} and ${clauseFor(t2)}`;
 }
 
 function toFloatingTimestamp(d: Date): string {
@@ -115,6 +149,10 @@ export async function findCandidates(opts: FindCandidatesOptions): Promise<Track
     `created_date between '${toFloatingTimestamp(start)}' and '${toFloatingTimestamp(end)}'`,
   ];
   if (opts.borough) whereParts.push(`borough='${opts.borough.toUpperCase()}'`);
+  if (opts.crossStreets) {
+    const clause = crossStreetWhere(opts.crossStreets);
+    if (clause) whereParts.push(clause);
+  }
 
   const rows = await fetchRows({
     $select: SELECT_FIELDS,

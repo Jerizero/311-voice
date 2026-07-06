@@ -12,8 +12,9 @@ import {
   buildConfirmationSummary,
 } from './prompts.js';
 import { createComplaint, updateComplaint, listComplaints } from '../storage/complaints.js';
-import { prepareHandoff, openInBrowser, formatHandoff } from '../submission/assisted.js';
-import { findCandidates, getStatusByUniqueKey } from '../tracking/nyc-opendata.js';
+import { prepareHandoff, openInBrowser, formatHandoff, extractLocationValue } from '../submission/assisted.js';
+import { findCandidates, getStatusByUniqueKey, type TrackedSR } from '../tracking/nyc-opendata.js';
+import { extractCrossStreets } from '../geo/nyc-geocoder.js';
 import type { ComplaintData } from '../complaints/types.js';
 import { logger } from '../utils/logger.js';
 
@@ -348,35 +349,62 @@ export class ConversationManager {
           }
         }
 
-        if (c.latitude == null || c.longitude == null) {
-          lines.push(`${label}: can't auto-match (no saved coordinates). Check status on the NYC portal.`);
+        const filedAfter = c.submittedAt ?? c.createdAt;
+        let candidates: TrackedSR[] = [];
+        let mode: 'geo' | 'cross' | 'none' = 'none';
+
+        if (c.latitude != null && c.longitude != null) {
+          mode = 'geo';
+          candidates = await findCandidates({
+            latitude: c.latitude,
+            longitude: c.longitude,
+            borough: c.borough ?? undefined,
+            filedAfter,
+            windowDays: 3,
+            limit: 3,
+          });
+        } else {
+          // No coordinates (typical for intersections): match on cross streets.
+          const loc = extractLocationValue(c.fields);
+          const crossStreets = loc ? extractCrossStreets(loc) : null;
+          if (crossStreets) {
+            mode = 'cross';
+            candidates = await findCandidates({
+              crossStreets,
+              borough: c.borough ?? undefined,
+              filedAfter,
+              windowDays: 3,
+              limit: 5,
+            });
+          }
+        }
+
+        if (mode === 'none') {
+          lines.push(`${label}: can't auto-match (no coordinates or cross streets). Check status on the NYC portal.`);
           continue;
         }
 
-        const candidates = await findCandidates({
-          latitude: c.latitude,
-          longitude: c.longitude,
-          borough: c.borough ?? undefined,
-          filedAfter: c.submittedAt ?? c.createdAt,
-          windowDays: 3,
-          limit: 3,
-        });
-
         const best = candidates[0];
-        // Confident single match: within 120m and clearly closer than the runner-up.
-        if (best && best.distanceMeters !== undefined && best.distanceMeters <= 120) {
+        // Geo: confident within 120m. Cross-street: confident only if a single hit.
+        const confident =
+          mode === 'geo'
+            ? best?.distanceMeters !== undefined && best.distanceMeters <= 120
+            : candidates.length === 1;
+
+        if (best && confident) {
           updateComplaint(c.id!, {
             nycUniqueKey: best.uniqueKey,
             nycStatus: best.status,
             nycCheckedAt: new Date(),
           });
-          lines.push(`${label}: ${best.status} - ${best.complaintType} (${Math.round(best.distanceMeters)}m away)`);
+          const how = best.distanceMeters !== undefined ? `${Math.round(best.distanceMeters)}m away` : 'cross-street match';
+          lines.push(`${label}: ${best.status} - ${best.complaintType} (${how})`);
           if (best.resolutionDescription) lines.push(`   ${best.resolutionDescription}`);
         } else if (candidates.length > 0) {
-          lines.push(`${label}: no confident match yet. Nearby candidates:`);
+          lines.push(`${label}: no confident match yet. Candidates:`);
           for (const cand of candidates) {
-            const dist = cand.distanceMeters !== undefined ? `${Math.round(cand.distanceMeters)}m` : 'unknown dist';
-            lines.push(`   - ${cand.complaintType} (${cand.status}, ${dist})`);
+            const where = cand.distanceMeters !== undefined ? `${Math.round(cand.distanceMeters)}m` : (cand.incidentAddress ?? 'nearby');
+            lines.push(`   - ${cand.complaintType} (${cand.status}, ${where})`);
           }
         } else {
           lines.push(`${label}: not in NYC Open Data yet (it updates ~daily). Try again tomorrow.`);

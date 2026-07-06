@@ -30,7 +30,8 @@ location, open the right NYC 311 form in your browser, and hand you the final
 click. Paste back the SR number and I'll track its status for you.
 
 Types: illegal parking · no heat/hot water · traffic signal · snow or ice ·
-missed collection · blocked sidewalk
+missed collection · blocked sidewalk · residential noise · rats/mice ·
+pothole · graffiti
 
 Commands: "history" · "track" · "help" · "quit"
 `;
