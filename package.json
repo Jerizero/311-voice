@@ -10,6 +10,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "pretest": "node -e \"try { new (require('better-sqlite3'))(':memory:') } catch (e) { console.error('better-sqlite3 cannot load on Node ' + process.version + '; run nvm use (see .nvmrc) or npm rebuild'); process.exit(1) }\"",
     "test": "tsx --test tests/**/*.test.ts"
   },
   "keywords": [
@@ -21,7 +22,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=18 <25"
+    "node": "22.x"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
