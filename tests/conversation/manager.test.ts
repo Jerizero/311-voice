@@ -10,6 +10,9 @@ import { listComplaints } from '../../src/storage/complaints.js';
 import {
   mockGenerate,
   CLASSIFY_SNOW_ICE,
+  CLASSIFY_SNOW_ICE_PARTIAL,
+  EXTRACT_LOCATION_TYPE,
+  FOLLOW_UP_LOCATION,
   MALFORMED_RESPONSE,
 } from '../helpers/mock-generate.js';
 
@@ -31,6 +34,25 @@ describe('ConversationManager', () => {
 
     const response = await mgr.processMessage('ice on sidewalk');
     assert.ok(response.includes("couldn't understand"));
+  });
+
+  it('continues gathering fields after partial extraction', async () => {
+    const gen = mockGenerate([
+      CLASSIFY_SNOW_ICE_PARTIAL,    // classify: snow-ice, address only
+      FOLLOW_UP_LOCATION,           // follow-up question
+      EXTRACT_LOCATION_TYPE,        // extract locationType from user response
+    ]);
+    const mgr = new ConversationManager(undefined, false, gen);
+
+    // First message: classify. A missing required field must be asked for, not confirmed.
+    await mgr.processMessage('Snow at 456 Broadway');
+    assert.equal(mgr.getState().currentComplaint?.type, 'snow-ice');
+    assert.ok(!mgr.getState().awaitingConfirmation);
+
+    // Second message: provide missing field
+    await mgr.processMessage('it is on the sidewalk');
+    // Should now have all fields and show confirmation
+    assert.ok(mgr.getState().awaitingConfirmation);
   });
 
   it('submit hands off and awaits an SR number', async () => {
