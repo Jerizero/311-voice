@@ -31,4 +31,24 @@ describe('isNonTraditionalAddress', () => {
     assert.equal(isNonTraditionalAddress('123 Main Street'), false);
     assert.equal(isNonTraditionalAddress('456 Broadway'), false);
   });
+
+  it('numbered street addresses are traditional; places and intersections are not', () => {
+    const cases: [string, boolean][] = [
+      ['100 Park Ave', false],
+      ['5 Park Place', false],
+      ['1 Washington Square N', false],
+      ['37-12 90th Street', false],
+      ['2 Columbus Circle', false],
+      ['135th and Broadway', true],
+      ['5th Avenue and 42nd Street', true],
+      ['100 Park Ave and 42nd Street', true],
+      ['corner of 5th and Main', true],
+      ['Washington Square Park', true],
+      ['Union Square', true],
+      ['Brooklyn Bridge', true],
+    ];
+    for (const [input, expected] of cases) {
+      assert.equal(isNonTraditionalAddress(input), expected, input);
+    }
+  });
 });

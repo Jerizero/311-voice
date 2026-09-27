@@ -92,18 +92,11 @@ export async function takeScreenshot(page: Page): Promise<string | undefined> {
 
 /** Detect if address is non-traditional (intersection, bridge, landmark) */
 export function isNonTraditionalAddress(address: string): boolean {
-  const patterns = [
-    /\band\b/i,
-    /bridge/i,
-    /park\b/i,
-    /plaza/i,
-    /square/i,
-    /circle/i,
-    /\bat\b.*\bat\b/i,
-    /corner of/i,
-    /intersection/i,
-  ];
-  return patterns.some(p => p.test(address));
+  const intersection = [/\band\b/i, /\bat\b.*\bat\b/i, /corner of/i, /intersection/i];
+  const place = [/bridge/i, /park\b/i, /plaza/i, /square/i, /circle/i];
+  // A leading house number ("100 Park Ave", "37-12 90th St") means place words are just street names.
+  const houseNumbered = /^\s*\d+(-\d+)?\s/.test(address);
+  return intersection.some(p => p.test(address)) || (!houseNumbered && place.some(p => p.test(address)));
 }
 
 /** Extract nearby street addresses from an intersection/landmark description */
