@@ -3,6 +3,8 @@
 import { createInterface } from 'readline';
 import { Command } from 'commander';
 import { ConversationManager } from './conversation/manager.js';
+import { getAllTemplates } from './complaints/templates/index.js';
+import { promptLabel } from './conversation/prompt-label.js';
 
 const program = new Command();
 
@@ -19,6 +21,20 @@ if (options.verbose) {
   process.env.LOG_LEVEL = 'debug';
 }
 
+function wrap(text: string, width: number): string {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if (line && line.length + word.length + 1 > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  return [...lines, line].join('\n');
+}
+
 const WELCOME = `
 ╔══════════════════════════════════════════════════════════╗
 ║                     311-voice                             ║
@@ -29,11 +45,9 @@ Describe your issue in plain English. I'll gather the details, geocode the
 location, open the right NYC 311 form in your browser, and hand you the final
 click. Paste back the SR number and I'll track its status for you.
 
-Types: illegal parking · no heat/hot water · traffic signal · snow or ice ·
-missed collection · blocked sidewalk · residential noise · rats/mice ·
-pothole · graffiti
+${wrap('Types: ' + getAllTemplates().map((t) => t.displayName.toLowerCase()).join(' · '), 76)}
 
-Commands: "history" · "track" · "help" · "quit"
+Commands: "history" · "track" · "help" · "cancel" · "quit"
 `;
 
 const HELP = `
@@ -48,7 +62,8 @@ How this works:
 Commands:
   history   list your complaints and their status
   track     check filed complaints against NYC Open Data
-  help      show this
+  cancel    drop the complaint in progress
+  help      show this (works any time)
   quit      exit
 `;
 
@@ -74,7 +89,7 @@ async function main() {
   });
 
   const prompt = () => {
-    rl.question('\n> ', async (input) => {
+    rl.question('\n' + promptLabel(manager.getState()), async (input) => {
       const trimmed = input.trim();
 
       if (!trimmed) {
@@ -90,20 +105,35 @@ async function main() {
         process.exit(0);
       }
 
-      // Direct commands bypass the LLM for speed and reliability. They only fire
-      // when not mid-complaint, so words like "help" can't hijack a description.
-      const midComplaint =
-        manager.getState().currentComplaint !== null ||
-        manager.getState().awaitingConfirmation ||
-        manager.getState().awaitingSubmissionNumber;
+      // Direct commands bypass the LLM for speed and reliability. Only exact one-word
+      // inputs count, so a description that mentions "help" still reaches the LLM.
+      const state = manager.getState();
+      const gathering =
+        state.currentComplaint !== null && !state.awaitingConfirmation && !state.awaitingSubmissionNumber;
+      const midComplaint = gathering || state.awaitingConfirmation || state.awaitingSubmissionNumber;
 
-      if (!midComplaint && (cmd === 'help' || cmd === '?')) {
+      if (cmd === 'help' || cmd === '?') {
         console.log(HELP);
         prompt();
         return;
       }
 
-      if (!midComplaint && cmd === 'track') {
+      // Confirmation and SR-number steps already handle "cancel" (the SR step keeps
+      // the draft), so only the gathering step needs it here.
+      if (gathering && cmd === 'cancel') {
+        manager.reset();
+        console.log('\nDropped. What would you like to report?');
+        prompt();
+        return;
+      }
+
+      if (midComplaint && (cmd === 'track' || cmd === 'history')) {
+        console.log(`\nFinish this complaint first, or type cancel. (${promptLabel(state).slice(0, -2)})`);
+        prompt();
+        return;
+      }
+
+      if (cmd === 'track') {
         try {
           console.log('\n' + (await manager.trackComplaints()));
         } catch (error) {
@@ -113,7 +143,7 @@ async function main() {
         return;
       }
 
-      if (!midComplaint && cmd === 'history') {
+      if (cmd === 'history') {
         console.log('\n' + manager.showHistory());
         prompt();
         return;
@@ -137,4 +167,7 @@ async function main() {
   prompt();
 }
 
-main();
+main().catch((error) => {
+  console.error('\n❌', error instanceof Error ? error.message : 'unexpected error');
+  process.exit(1);
+});
